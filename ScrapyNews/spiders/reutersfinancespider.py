@@ -12,19 +12,19 @@ class ReutersFinanceSpider(Spider):
 
     start_categoryUrls = [
             "http://www.reuters.com/news/archive/businessNews?date=",
-            "http://www.reuters.com/news/archive/USLegal?date=",
-            "http://www.reuters.com/news/archive/innovationNews?date=",
-            "http://www.reuters.com/news/archive/Aerospace?date=",
-            "http://www.reuters.com/news/archive/banks?date=",
-            "http://www.reuters.com/news/archive/autos?date=",
-            "http://www.reuters.com/news/archive/ousivMolt?date=",
-            "http://www.reuters.com/news/archive/marketsNews?date=",
-            "http://www.reuters.com/news/archive/bondsNews?date=",
-            "http://www.reuters.com/news/archive/usDollarRpt?date=",
-            "http://www.reuters.com/news/archive/GCA-Commodities?date=",
-            "http://www.reuters.com/news/archive/gc07?date=",
-            "http://www.reuters.com/news/archive/retirement-news?date=",
-            "http://www.reuters.com/topics/archive/fundsfundsNews?date="
+#            "http://www.reuters.com/news/archive/USLegal?date=",
+#            "http://www.reuters.com/news/archive/innovationNews?date=",
+#            "http://www.reuters.com/news/archive/Aerospace?date=",
+#            "http://www.reuters.com/news/archive/banks?date=",
+#            "http://www.reuters.com/news/archive/autos?date=",
+#            "http://www.reuters.com/news/archive/ousivMolt?date=",
+#            "http://www.reuters.com/news/archive/marketsNews?date=",
+#            "http://www.reuters.com/news/archive/bondsNews?date=",
+#            "http://www.reuters.com/news/archive/usDollarRpt?date=",
+#            "http://www.reuters.com/news/archive/GCA-Commodities?date=",
+#            "http://www.reuters.com/news/archive/gc07?date=",
+#            "http://www.reuters.com/news/archive/retirement-news?date=",
+#            "http://www.reuters.com/topics/archive/fundsfundsNews?date="
     ]
 
     parsed_urls = []
@@ -46,6 +46,7 @@ class ReutersFinanceSpider(Spider):
                 call_url = category_Url + current_time.strftime('%m%d%Y')
                 yield Request(url=call_url,callback=self.parse_category)    
             current_time = current_time + timedelta(days=1)
+            return
 
 
     def parse_category(self, response):
@@ -60,7 +61,7 @@ class ReutersFinanceSpider(Spider):
 
 
     def parse_news(self,response):
-        debug = False
+        debug = True
 
         if response.url in self.parsed_urls:
             return
@@ -74,7 +75,14 @@ class ReutersFinanceSpider(Spider):
         hxs = Selector(response)
         try:
             newsItem['news_title'] = hxs.xpath('//h1[@class="article-headline"]/text()').extract()[0]#.encode("utf-8")
-            newsItem['news_authors'] = ", ".join(hxs.xpath('//div[@class="article-info"]/span[@class="byline"]/text()').extract())
+
+            authors_nolink_text = "\t".join(hxs.xpath('//div[@class="article-info"]/span[@class="byline"]/text()').extract())
+            authors_link = hxs.xpath('//div[@class="article-info"]/span[@class="byline"]/a/text()').extract()
+            authorsArr = re.sub("and|,", "\t", authors_nolink_text.strip("By ")).split("\t")
+            if authors_link:
+                authorsArr.extend(authors_link)
+            newsItem['news_authors'] = ", ".join([item.strip() for item in authorsArr if len(item)>1])
+
             newsItem['news_posttime'] = hxs.xpath('//span[@class="timestamp"]/text()').extract()[0]#.encode("utf-8")
             first_paragraph = hxs.xpath('//span[@id="articleText"]/span[@class="focusParagraph"]/p/text()').extract()[0]
             left_content = "\n".join(hxs.xpath('//span[@id="articleText"]/p/text()').extract())
@@ -95,7 +103,7 @@ class ReutersFinanceSpider(Spider):
                 print "title", newsItem['news_title']
                 print "authors", newsItem['news_authors']
                 print "posttime", newsItem['news_posttime']
-                print "content", newsItem['news_content']#[:20]
+                print "content", newsItem['news_content'][:20]
                 print "dir", newsItem["news_dir"]
                 print "filename", newsItem["news_filename"]
 

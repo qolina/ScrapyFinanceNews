@@ -65,27 +65,29 @@ class BloombergSpider(Spider):
 
 
     def parse_news(self,response):
+        debug = False
 
         if response.url in self.parsed_urls:
             return
         self.parsed_urls.append(response.url)
         
-#        print "********************************************************************"
-#        print response.url
+        if debug:
+            print "********************************************************************"
+            print response.url
 
         newsItem = NewsItem()
         hxs = Selector(response)
         try:
             newsItem['news_title'] = hxs.xpath('//h1[@class="lede-headline"]/span/text()').extract()[0].encode("utf-8")
             article_info = hxs.xpath('//div[@class="article-details"]')
-            newsItem['news_authors'] = ", ".join(article_info.xpath('//a[@class="author-link"]/text()').extract())
-            newsItem['news_posttime'] = article_info.xpath('//div[@class="published-info"]/time/text()').extract()[0].encode("utf-8")
-            newsItem['news_content'] = "\n".join(hxs.xpath('//div[@class="article-body__content"]/p/text()').extract())
 
-#            print "title", newsItem['news_title']
-#            print "authors", newsItem['news_authors']
-#            print "posttime", newsItem['news_posttime']
-#            print "content", newsItem['news_content'][:20]
+            # arr-format
+            newsItem['news_authors'] = article_info.xpath('//a[@class="author-link"]//text()').extract()
+
+            newsItem['news_posttime'] = article_info.xpath('//div[@class="published-info"]/time/text()').extract()[0].encode("utf-8")
+
+            # arr-format
+            newsItem['news_content'] = hxs.xpath('//div[@class="article-body__content"]/p//text()').extract()
 
 
             newsItem['news_url'] = response.url
@@ -97,6 +99,14 @@ class BloombergSpider(Spider):
                 newsItem['news_dir'] = post_date.group(1)
 
             newsItem['news_domain'] = "bloomberg"
+
+            if debug:
+                print "title", newsItem['news_title']
+                print "authors", newsItem['news_authors']
+                print "posttime", newsItem['news_posttime']
+                print "content", "".join(newsItem['news_content'])[:20]
+                print "dir", newsItem["news_dir"]
+                print "filename", newsItem["news_filename"]
 
             yield newsItem
         except Exception,e:

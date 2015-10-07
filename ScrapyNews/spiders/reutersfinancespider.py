@@ -12,20 +12,25 @@ class ReutersFinanceSpider(Spider):
 
     start_categoryUrls = [
             "http://www.reuters.com/news/archive/businessNews?date=",
-#            "http://www.reuters.com/news/archive/USLegal?date=",
-#            "http://www.reuters.com/news/archive/innovationNews?date=",
-#            "http://www.reuters.com/news/archive/Aerospace?date=",
-#            "http://www.reuters.com/news/archive/banks?date=",
-#            "http://www.reuters.com/news/archive/autos?date=",
-#            "http://www.reuters.com/news/archive/ousivMolt?date=",
-#            "http://www.reuters.com/news/archive/marketsNews?date=",
-#            "http://www.reuters.com/news/archive/bondsNews?date=",
-#            "http://www.reuters.com/news/archive/usDollarRpt?date=",
-#            "http://www.reuters.com/news/archive/GCA-Commodities?date=",
-#            "http://www.reuters.com/news/archive/gc07?date=",
-#            "http://www.reuters.com/news/archive/retirement-news?date=",
-#            "http://www.reuters.com/topics/archive/fundsfundsNews?date="
+            "http://www.reuters.com/news/archive/USLegal?date=",
+            "http://www.reuters.com/news/archive/innovationNews?date=",
+            "http://www.reuters.com/news/archive/Aerospace?date=",
+            "http://www.reuters.com/news/archive/banks?date=",
+            "http://www.reuters.com/news/archive/autos?date=",
+            "http://www.reuters.com/news/archive/ousivMolt?date=",
+            "http://www.reuters.com/news/archive/marketsNews?date=",
+            "http://www.reuters.com/news/archive/bondsNews?date=",
+            "http://www.reuters.com/news/archive/usDollarRpt?date=",
+            "http://www.reuters.com/news/archive/GCA-Commodities?date=",
+            "http://www.reuters.com/news/archive/gc07?date=",
+            "http://www.reuters.com/news/archive/retirement-news?date=",
+            "http://www.reuters.com/topics/archive/fundsfundsNews?date="
     ]
+
+    # for debug
+#    start_urls = [
+#        "http://www.reuters.com//article/2015/04/10/us-takata-recall-honda-idUSKBN0N128S20150410"
+#    ]
 
     parsed_urls = []
 
@@ -33,6 +38,13 @@ class ReutersFinanceSpider(Spider):
         super(ReutersFinanceSpider,self).__init__()
         self.reuters_url = 'http://www.reuters.com/'
         self.date_pattern = re.compile('([0-9]{4}/[0-9]{2}/[0-9]{2})')
+
+
+# for debug
+#    def parse(self, response):
+#        print "**Parsing", response.url
+#        yield Request(response.url, callback = self.parse_news)
+
 
 
     def start_requests(self):
@@ -46,7 +58,6 @@ class ReutersFinanceSpider(Spider):
                 call_url = category_Url + current_time.strftime('%m%d%Y')
                 yield Request(url=call_url,callback=self.parse_category)    
             current_time = current_time + timedelta(days=1)
-            return
 
 
     def parse_category(self, response):
@@ -61,7 +72,7 @@ class ReutersFinanceSpider(Spider):
 
 
     def parse_news(self,response):
-        debug = True
+        debug = False
 
         if response.url in self.parsed_urls:
             return
@@ -74,20 +85,16 @@ class ReutersFinanceSpider(Spider):
         newsItem = NewsItem()
         hxs = Selector(response)
         try:
-            newsItem['news_title'] = hxs.xpath('//h1[@class="article-headline"]/text()').extract()[0]#.encode("utf-8")
+            title_text = hxs.xpath('//h1[@class="article-headline"]/text()').extract()[0].encode("utf-8")
+            newsItem['news_title'] = title_text
 
-            authors_nolink_text = "\t".join(hxs.xpath('//div[@class="article-info"]/span[@class="byline"]/text()').extract())
-            authors_link = hxs.xpath('//div[@class="article-info"]/span[@class="byline"]/a/text()').extract()
-            authorsArr = re.sub("and|,", "\t", authors_nolink_text.strip("By ")).split("\t")
-            if authors_link:
-                authorsArr.extend(authors_link)
-            newsItem['news_authors'] = ", ".join([item.strip() for item in authorsArr if len(item)>1])
+            newsItem['news_authors'] = hxs.xpath('//div[@class="article-info"]/span[@class="byline"]//text()').extract()
 
-            newsItem['news_posttime'] = hxs.xpath('//span[@class="timestamp"]/text()').extract()[0]#.encode("utf-8")
-            first_paragraph = hxs.xpath('//span[@id="articleText"]/span[@class="focusParagraph"]/p/text()').extract()[0]
-            left_content = "\n".join(hxs.xpath('//span[@id="articleText"]/p/text()').extract())
-            newsItem['news_content'] = first_paragraph + "\n" + left_content
+            postTime_text = hxs.xpath('//span[@class="timestamp"]/text()').extract()[0].encode("utf-8")
+            newsItem['news_posttime'] = postTime_text
 
+            # arr-format
+            newsItem['news_content'] = hxs.xpath('//span[@id="articleText"]//text()').extract()
 
             newsItem['news_url'] = response.url
             newsItem['news_filename'] = response.url.rsplit('/',1)[1].strip(".html")
@@ -103,7 +110,7 @@ class ReutersFinanceSpider(Spider):
                 print "title", newsItem['news_title']
                 print "authors", newsItem['news_authors']
                 print "posttime", newsItem['news_posttime']
-                print "content", newsItem['news_content'][:20]
+                print "content", "".join(newsItem['news_content'])[:20]
                 print "dir", newsItem["news_dir"]
                 print "filename", newsItem["news_filename"]
 
